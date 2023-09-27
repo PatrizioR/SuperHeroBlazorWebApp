@@ -1,0 +1,102 @@
+﻿@attribute [RenderModeWebAssembly]
+@inject HttpClient client
+<h3>Super Heroes</h3>
+@if (SuperHeroList != null)
+{
+    <button class="btn btn-primary" type="button" @onclick="@(() => AddClick())">+</button>
+}
+
+<QuickGrid TGridItem="SuperHero" Items="@SuperHeroGridList">
+    <PropertyColumn Property="@(p => p.Id)" Sortable="true" />
+    <PropertyColumn Property="@(p => p.RealName)" Sortable="true" />
+    <PropertyColumn Property="@(p => p.HeroName)" Sortable="true" />
+    <TemplateColumn Title="Action">
+        <button type="button" class="btn btn-success" @onclick="@(() => EditClick(context))">Edit</button>
+        <button type="button" class="btn btn-danger" disabled="@HasMovie(context)" @onclick="@(() => DeleteClickAsync(context))">Delete</button>
+    </TemplateColumn>
+</QuickGrid>
+
+@if (EditItem != null)
+{
+    <hr />
+    <SuperHeroEditComponent Item="@EditItem" OnSave="@HandleSuperHeroSave"></SuperHeroEditComponent>
+}
+
+@code {
+    public List<SuperHero>? SuperHeroList { get; set; }
+    public IQueryable<SuperHero> SuperHeroGridList => SuperHeroList?.Any() == true ? SuperHeroList.AsQueryable() : Enumerable.Empty<SuperHero>().AsQueryable();
+    public SuperHero? EditItem { get; set; }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadSuperHeroes();
+            StateHasChanged();
+        }
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private void AddClick()
+    {
+        EditItem = new SuperHero();
+        StateHasChanged();
+    }
+
+    private void EditClick(SuperHero? item)
+    {
+        EditItem = item;
+        StateHasChanged();
+    }
+
+    private bool HasMovie(SuperHero? item)
+    {
+        return item?.MovieIds?.Any() == true;
+    }
+
+    private async Task DeleteClickAsync(SuperHero? item)
+    {
+        if (item == null)
+        {
+            return;
+        }
+        else if (item.Id > 0)
+        {
+            var result = await client.DeleteAsync($"SuperHero/{item.Id}");
+            result.EnsureSuccessStatusCode();
+        }
+
+        await LoadSuperHeroes();
+        StateHasChanged();
+        return;
+    }
+
+    private async Task HandleSuperHeroSave(SuperHero updatedHero)
+    {
+        // Handle the updated superhero object
+        string updateUrl;
+        if(updatedHero.Id == 0)
+        {
+            updateUrl = $"SuperHero";
+        }
+        else
+        {
+            updateUrl = $"SuperHero/{updatedHero.Id}";
+        }
+        var result = await client.PostAsJsonAsync(updateUrl, updatedHero);
+        result.EnsureSuccessStatusCode();
+        var savedHero = await result.Content.ReadFromJsonAsync<SuperHero>();
+        EditItem = null;
+        await LoadSuperHeroes();
+        StateHasChanged();
+    }
+
+    private async Task LoadSuperHeroes()
+    {
+        var result = await client.GetFromJsonAsync<List<SuperHero>>("SuperHero");
+        if(result != null)
+        {
+            SuperHeroList = result;
+            StateHasChanged();
+        }
+    }
+}

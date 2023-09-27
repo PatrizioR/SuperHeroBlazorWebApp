@@ -1,0 +1,33 @@
+﻿<h3>Super Hero Create/Edit</h3>
+
+<EditForm Model="Item" OnValidSubmit="HandleValidSubmit">
+    <DataAnnotationsValidator />
+
+    <div class="form-group">
+        <label for="realName">Real Name</label>
+        <InputText id="realName" class="form-control" @bind-Value="Item.RealName" />
+        <ValidationMessage For="@(() => Item.RealName)" />
+    </div>
+
+    <div class="form-group">
+        <label for="heroName">Hero Name</label>
+        <InputText id="heroName" class="form-control" @bind-Value="Item.HeroName" />
+        <ValidationMessage For="@(() => Item.HeroName)" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save</button>
+</EditForm>
+
+@code {
+    [Parameter]
+    [EditorRequired]
+    public SuperHero Item { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback<SuperHero> OnSave { get; set; }
+
+    private async Task HandleValidSubmit()
+    {
+        await OnSave.InvokeAsync(Item);
+    }
+}

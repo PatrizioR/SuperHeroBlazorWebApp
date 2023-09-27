@@ -1,0 +1,117 @@
+﻿@attribute [RenderModeWebAssembly]
+@inject HttpClient client
+<h3>Movies</h3>
+@if (MovieList != null)
+{
+    <button class="btn btn-primary" type="button" @onclick="@(() => AddClick())">+</button>
+}
+
+<QuickGrid TGridItem="Movie" Items="@MovieGridList">
+    <PropertyColumn Property="@(p => p.Id)" Sortable="true" />
+    <PropertyColumn Property="@(p => p.Title)" Sortable="true" />
+    <TemplateColumn Title="Super Hero">
+        @{
+            var hero = SuperHeroList?.SingleOrDefault(item => item.Id == context.SuperHeroId);
+        }
+        @if(hero != null){
+            <span>@hero.HeroName (@hero.RealName)</span>
+        }
+    </TemplateColumn>
+    <TemplateColumn Title="Action">
+        <button type="button" class="btn btn-success" @onclick="@(() => EditClick(context))">Edit</button>
+        <button type="button" class="btn btn-danger" @onclick="@(() => DeleteClickAsync(context))">Delete</button>
+    </TemplateColumn>
+</QuickGrid>
+
+@if (EditItem != null)
+{
+    <hr />
+    <MovieEditComponent Item="@EditItem" OnSave="@HandleMovieSave" SuperHeroes="@SuperHeroList"></MovieEditComponent>
+}
+
+@code {
+    public List<Movie>? MovieList { get; set; }
+    public List<SuperHero>? SuperHeroList { get; set; }
+    public IQueryable<Movie> MovieGridList => MovieList?.Any() == true ? MovieList.AsQueryable() : Enumerable.Empty<Movie>().AsQueryable();
+    public Movie? EditItem { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadMovies();
+            await LoadSuperHeroes();
+            StateHasChanged();
+        }
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private void AddClick()
+    {
+        EditItem = new Movie();
+        StateHasChanged();
+    }
+
+    private void EditClick(Movie? item)
+    {
+        EditItem = item;
+        StateHasChanged();
+    }
+
+    private async Task DeleteClickAsync(Movie? item)
+    {
+        if (item == null)
+        {
+            return;
+        }
+        else if (item.Id > 0)
+        {
+            var result = await client.DeleteAsync($"Movie/{item.Id}");
+            result.EnsureSuccessStatusCode();
+        }
+
+        await LoadMovies();
+        StateHasChanged();
+        return;
+    }
+
+    private async Task HandleMovieSave(Movie updatedMovie)
+    {
+        // Handle the updated movie object
+        string updateUrl;
+        if(updatedMovie.Id == 0)
+        {
+            updateUrl = $"Movie";
+        }
+        else
+        {
+            updateUrl = $"Movie/{updatedMovie.Id}";
+        }
+        var result = await client.PostAsJsonAsync(updateUrl, updatedMovie);
+        result.EnsureSuccessStatusCode();
+        var savedMovie = await result.Content.ReadFromJsonAsync<Movie>();
+        EditItem = null;
+        await LoadMovies();
+        StateHasChanged();
+    }
+
+    private async Task LoadMovies()
+    {
+        var result = await client.GetFromJsonAsync<List<Movie>>("Movie");
+        if(result != null)
+        {
+            MovieList = result;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadSuperHeroes()
+    {
+        var result = await client.GetFromJsonAsync<List<SuperHero>>("SuperHero");
+        if (result != null)
+        {
+            SuperHeroList = result;
+            StateHasChanged();
+        }
+    }
+}

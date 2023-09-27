@@ -1,0 +1,42 @@
+﻿<h3>Movie Create/Edit</h3>
+
+<EditForm Model="Item" OnValidSubmit="HandleValidSubmit">
+    <DataAnnotationsValidator />
+
+    <div class="form-group">
+        <label for="title">Title</label>
+        <InputText id="title" class="form-control" @bind-Value="Item.Title" />
+        <ValidationMessage For="@(() => Item.Title)" />
+    </div>
+
+    <div class="form-group">
+        <label for="superHeroId">Super Hero</label>
+        <InputSelect id="superHeroId" class="form-control" @bind-Value="Item.SuperHeroId">
+            <option value="">Select a Super Hero</option>
+            @foreach (var hero in SuperHeroes ?? Enumerable.Empty<SuperHero>())
+            {
+                <option value="@hero.Id">@hero.HeroName</option>
+            }
+        </InputSelect>
+        <ValidationMessage For="@(() => Item.SuperHeroId)" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save</button>
+</EditForm>
+
+@code {
+    [Parameter]
+    [EditorRequired]
+    public Movie Item { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback<Movie> OnSave { get; set; }
+
+    [Parameter]
+    public List<SuperHero>? SuperHeroes { get; set; }
+
+    private async Task HandleValidSubmit()
+    {
+        await OnSave.InvokeAsync(Item);
+    }
+}
